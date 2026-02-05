@@ -10,19 +10,18 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1. Bắt lỗi logic chung (RuntimeException)
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     public ErrorMessage handleRuntimeException(RuntimeException ex, WebRequest request) {
         return new ErrorMessage(
                 HttpStatus.BAD_REQUEST.value(),
                 LocalDateTime.now(),
-                ex.getMessage(), // Đây chính là chữ "Hết hàng!" hoặc "Không thấy SP" bạn viết ở Service
+                ex.getMessage(), 
                 request.getDescription(false)
         );
     }
 
-    // 2. Bắt lỗi Validation (Dữ liệu gửi lên sai định dạng)
+    
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     public ErrorMessage handleValidationException(MethodArgumentNotValidException ex) {

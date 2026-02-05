@@ -19,11 +19,10 @@ public class Voucher {
     private String type;
     private Integer usedCount;
 
-    // --- CHÉP ĐOẠN NÀY VÀO CUỐI FILE ---
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
-    public Boolean getActive() { return active; } // Để khớp với lỗi trong ảnh của bạn
+    public Boolean getActive() { return active; } 
     public void setActive(Boolean active) { this.active = active; }
 
     public String getCode() { return code; }

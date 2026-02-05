@@ -8,7 +8,7 @@ public class ErrorMessage {
     private String message;
     private String description;
 
-    // Tự viết Constructor (Để không cần dùng Lombok)
+
     public ErrorMessage(int statusCode, LocalDateTime timestamp, String message, String description) {
         this.statusCode = statusCode;
         this.timestamp = timestamp;
@@ -16,7 +16,7 @@ public class ErrorMessage {
         this.description = description;
     }
 
-    // Tự viết Getter (Để các class khác đọc được dữ liệu)
+
     public int getStatusCode() { return statusCode; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public String getMessage() { return message; }

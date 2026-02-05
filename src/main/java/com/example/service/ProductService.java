@@ -34,7 +34,6 @@ public class ProductService {
         Product old = productRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy SP"));
 
-        // Chỉ cần cập nhật các biến chính
         old.setName(p.getName());
         old.setPrice(p.getPrice());
         old.setStock(p.getStock());
@@ -50,33 +49,27 @@ public class ProductService {
 
        @Transactional
     public void importStock(Integer productId, Integer qty) {
-        // 1. Tìm sản phẩm
         Product p = productRepo.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Không thấy sản phẩm"));
 
-        // 2. LẤY THÔNG TIN NGƯỜI ĐANG ĐĂNG NHẬP (Từ Token)
         String currentUsername = org.springframework.security.core.context.SecurityContextHolder
                 .getContext().getAuthentication().getName();
- // Sửa dòng 61 từ findByName thành findByEmail
 User currentUser = userRepo.findByEmail(currentUsername)
         .orElseThrow(() -> new RuntimeException("Không thấy người dùng hiện tại"));
 
-        // 3. Cập nhật số lượng tồn kho của sản phẩm
         p.setStock(p.getStock() + qty);
         productRepo.save(p);
 
-        // 4. LƯU LỊCH SỬ NHẬP HÀNG
         StockHistory history = new StockHistory();
         history.setProduct(p);
         history.setUser(currentUser);
         history.setQuantity(qty);
-        history.setCostPrice(p.getCostPrice()); // Lấy giá vốn hiện tại của sản phẩm
+        history.setCostPrice(p.getCostPrice());
         
-        // Tính tổng giá nhập: costPrice * quantity
         BigDecimal total = p.getCostPrice().multiply(BigDecimal.valueOf(qty));
         history.setTotalAmount(total);
         
-        history.setImportDate(LocalDateTime.now()); // Lưu ngày giờ hiện tại
+        history.setImportDate(LocalDateTime.now()); 
 
         stockHistoryRepo.save(history);
     }

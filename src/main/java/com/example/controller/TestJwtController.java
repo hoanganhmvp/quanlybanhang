@@ -15,7 +15,6 @@ public class TestJwtController {
 
     @GetMapping("/gen-token")
     public String generate(@RequestParam String name) {
-        // Đã sửa: Truyền thêm một danh sách Role mặc định để hết lỗi
         return jwtUtil.generateToken(name, List.of("ROLE_USER"));
     }
 }

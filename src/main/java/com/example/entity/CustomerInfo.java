@@ -3,7 +3,7 @@ package com.example.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "customer_info") // Ánh xạ đúng tên bảng trong ảnh của bạn
+@Table(name = "customer_info") 
 public class CustomerInfo {
     @Id
     private Integer id;
@@ -12,7 +12,6 @@ public class CustomerInfo {
     private String phone;
     private String address;
 
-    // --- Viết tay Getter/Setter để tránh lỗi Lombok ---
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
     public String getName() { return name; }

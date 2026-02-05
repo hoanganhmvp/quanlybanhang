@@ -17,12 +17,12 @@ public class StockHistory {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
-    private User user; // Người thực hiện nhập hàng (Admin/Employee)
+    private User user;
 
-    private Integer quantity; // Số lượng nhập thêm
-    private BigDecimal costPrice; // Giá nhập tại thời điểm đó
-    private BigDecimal totalAmount; // Tổng tiền nhập = quantity * costPrice
-    private LocalDateTime importDate; // Ngày giờ nhập
+    private Integer quantity; 
+    private BigDecimal costPrice; 
+    private BigDecimal totalAmount; 
+    private LocalDateTime importDate; 
 
     // --- Getter và Setter ---
     public Integer getId() { return id; }

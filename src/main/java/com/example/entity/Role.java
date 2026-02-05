@@ -12,7 +12,7 @@ public class Role {
     private Integer id;
 
     @Column(unique = true, nullable = false)
-    private String name; // Ví dụ: "ROLE_ADMIN", "ROLE_USER"
+    private String name;
 
     public Integer getId() {
         return id;

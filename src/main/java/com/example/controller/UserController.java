@@ -15,16 +15,13 @@ public class UserController {
     @Autowired private UserRepository userRepository;
     @Autowired private CustomerInfoRepository customerInfoRepo;
 
-    // 1. Xem danh sách khách hàng (Từ bảng riêng customer_info)
     @GetMapping("/customers")
     public List<CustomerInfo> getCustomerInfo() {
         return customerInfoRepo.findAll();
     }
 
-    // 2. Xem TẤT CẢ User (Từ bảng users - Hiện cả mật khẩu)
     @GetMapping("/users")
     public List<User> getAllUsers() {
-        // Trả về thẳng danh sách, không xóa password
         return userRepository.findAll();
     }
 }

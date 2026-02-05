@@ -18,13 +18,13 @@ public class SalesReturn {
     @JoinColumn(name = "product_id")
     private Product product;
 
-    private Integer quantity; // Số lượng trả lại
-    private String reason;    // Lý do trả hàng
+    private Integer quantity; 
+    private String reason;   
     private LocalDateTime returnDate;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
-    private User processedBy; // Nhân viên/Admin thực hiện nhận hàng trả
+    private User processedBy; 
 
     // --- Getter & Setter ---
     public Integer getId() { return id; }
