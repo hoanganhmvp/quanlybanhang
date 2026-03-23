@@ -1,75 +1,76 @@
 package com.example.service;
 
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.entity.Product;
 import com.example.entity.StockHistory;
+import com.example.entity.User;
 import com.example.repository.ProductRepository;
 import com.example.repository.StockHistoryRepository;
 import com.example.repository.UserRepository;
-import com.example.entity.User;
 
 @Service
 public class ProductService {
 
-    @Autowired
-    private ProductRepository productRepo;
-        @Autowired private StockHistoryRepository stockHistoryRepo;
+    @Autowired private ProductRepository productRepo;
+    @Autowired private StockHistoryRepository stockHistoryRepo;
     @Autowired private UserRepository userRepo;
-
-    public Product create(Product p) {
-        return productRepo.save(p);
-    }
 
     public List<Product> getAll() {
         return productRepo.findAll();
     }
 
-    public Product update(Integer id, Product p) {
-        Product old = productRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy SP"));
+    public Product save(Product product) {
+        return productRepo.save(product);
+    }
 
-        old.setName(p.getName());
-        old.setPrice(p.getPrice());
-        old.setStock(p.getStock());
-        old.setProductCode(p.getProductCode());
-        old.setCostPrice(p.getCostPrice());
-
-        return productRepo.save(old);
+    public Product update(Integer id, Product newProduct) {
+        Product oldProduct = productRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm id: " + id));
+        
+        oldProduct.setName(newProduct.getName());
+        oldProduct.setPrice(newProduct.getPrice());
+        oldProduct.setCostPrice(newProduct.getCostPrice());
+        oldProduct.setProductCode(newProduct.getProductCode());
+        oldProduct.setCategory(newProduct.getCategory());
+        // Không cập nhật stock trực tiếp ở đây (sẽ làm ở phần Nhập kho sau)
+        
+        return productRepo.save(oldProduct);
     }
 
     public void delete(Integer id) {
         productRepo.deleteById(id);
     }
 
-       @Transactional
-    public void importStock(Integer productId, Integer qty) {
+    @Transactional
+    public void importStock(Integer productId, Integer qty, BigDecimal newCostPrice, String userEmail) {
+        // 1. Tìm sản phẩm
         Product p = productRepo.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Không thấy sản phẩm"));
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
 
-        String currentUsername = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getName();
-User currentUser = userRepo.findByEmail(currentUsername)
-        .orElseThrow(() -> new RuntimeException("Không thấy người dùng hiện tại"));
+        // 2. Tìm người thực hiện (nhân viên/admin đang đăng nhập)
+        User user = userRepo.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
 
+        // 3. Cập nhật bảng Product
         p.setStock(p.getStock() + qty);
+        p.setCostPrice(newCostPrice); // Cập nhật giá vốn mới nhất
         productRepo.save(p);
 
+        // 4. Lưu lịch sử nhập kho
         StockHistory history = new StockHistory();
         history.setProduct(p);
-        history.setUser(currentUser);
+        history.setUser(user);
         history.setQuantity(qty);
-        history.setCostPrice(p.getCostPrice());
-        
-        BigDecimal total = p.getCostPrice().multiply(BigDecimal.valueOf(qty));
-        history.setTotalAmount(total);
-        
-        history.setImportDate(LocalDateTime.now()); 
+        history.setCostPrice(newCostPrice);
+        history.setTotalAmount(newCostPrice.multiply(BigDecimal.valueOf(qty)));
+        history.setImportDate(LocalDateTime.now());
 
         stockHistoryRepo.save(history);
     }

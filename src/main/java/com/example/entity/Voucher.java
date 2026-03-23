@@ -1,8 +1,13 @@
 package com.example.entity;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "vouchers")
@@ -10,14 +15,16 @@ public class Voucher {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    private Boolean active;
+
+    // Mặc định
+    private Boolean active = true;
     private String code;
     private BigDecimal discountValue;
     private LocalDateTime expiryDate;
-    private Integer maxUsage;
-    private BigDecimal minOrderAmount;
+    private Integer maxUsage = 0;
+    private BigDecimal minOrderAmount = BigDecimal.ZERO;
     private String type;
-    private Integer usedCount;
+    private Integer usedCount = 0;
 
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }

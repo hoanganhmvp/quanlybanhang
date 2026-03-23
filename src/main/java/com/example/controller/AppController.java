@@ -1,21 +1,25 @@
 package com.example.controller;
 
-import com.example.entity.*;
-import com.example.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.entity.Category;
+import com.example.repository.CategoryRepository;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin("*") 
 public class AppController {
 
+    // CHỈ GIỮ LẠI cái này vì bên dưới có dùng để lấy danh mục
     @Autowired private CategoryRepository categoryRepo;
-    @Autowired private BrandRepository categoryBrandRepo;
-    @Autowired private UserRepository userRepository;
-    @Autowired private SalesOrderRepository salesOrderRepo;
 
     @GetMapping("/categories")
     public List<Category> getAllCategories() {
@@ -26,5 +30,4 @@ public class AppController {
     public Category addCategory(@RequestBody Category category) {
         return categoryRepo.save(category);
     }
-
 }

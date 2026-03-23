@@ -2,140 +2,165 @@ package com.example.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.entity.*;
-import com.example.repository.*;
+
+import com.example.entity.CartItem;
+import com.example.entity.Product;
+import com.example.entity.SalesDetail;
+import com.example.entity.SalesOrder;
+import com.example.entity.SalesReturn;
+import com.example.entity.User;
+import com.example.repository.CartItemRepository;
+import com.example.repository.ProductRepository;
+import com.example.repository.SalesOrderRepository;
+import com.example.repository.SalesReturnRepository;
+import com.example.repository.UserRepository;
 
 @Service
 public class OrderService {
 
     @Autowired private SalesOrderRepository orderRepo;
-    @Autowired private SalesDetailRepository detailRepo;
+    @Autowired private CartItemRepository cartRepo;
     @Autowired private ProductRepository productRepo;
-    @Autowired private UserRepository userRepo; 
-    @Autowired private VoucherRepository voucherRepo; 
+    @Autowired private UserRepository userRepo;
+    @Autowired private SalesReturnRepository returnRepo;
+
+    private String getCurrentUserEmail() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
     @Transactional
-    public SalesOrder createOrder(SalesOrder order, String voucherCode) {
-        User user = userRepo.findById(order.getUser().getId())
-                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
-        order.setUser(user);
+    public SalesOrder checkout() {
+        // Get current user from authentication context
+        String currentEmail = getCurrentUserEmail();
+        User currentUser = userRepo.findByEmail(currentEmail)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin tài khoản"));
+        Integer userId = currentUser.getId();
+        
+        // 1. Lấy toàn bộ giỏ hàng của khách
+        List<CartItem> cartItems = cartRepo.findByUserId(userId);
+        if (cartItems.isEmpty()) throw new RuntimeException("Giỏ hàng trống!");
 
-        order.setOrderCode("ORD-" + System.currentTimeMillis());
-        order.setStatus("PENDING");
+        // 2. Khởi tạo Đơn hàng (Chung 1 mã hóa đơn)
+        SalesOrder order = new SalesOrder();
+        order.setUser(currentUser);
+        order.setOrderCode("INV-" + System.currentTimeMillis());
+        order.setStatus("PENDING"); // Logic: Mặc định là chờ Nhân viên duyệt
+        order.setOrderDate(LocalDateTime.now());
 
-        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal grandTotal = BigDecimal.ZERO;
+        List<SalesDetail> details = new ArrayList<>();
 
-        if (order.getDetails() != null) {
-            for (SalesDetail d : order.getDetails()) {
-                Product p = productRepo.findById(d.getProduct().getId())
-                        .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
-                        if (p.getStock() < d.getQuantity()) {
-            throw new RuntimeException("Sản phẩm " + p.getName() + " không đủ hàng!");
-        }
-        p.setStock(p.getStock() - d.getQuantity()); 
-        productRepo.save(p);
-                        d.setOrder(order); 
-                d.setPrice(p.getPrice()); 
-
-                BigDecimal subTotal = p.getPrice().multiply(BigDecimal.valueOf(d.getQuantity()));
-                total = total.add(subTotal);
-            }
-        }
-        if (order.getVoucher() != null && order.getVoucher().getCode() != null) {
-            String code = order.getVoucher().getCode();
-    
-            Voucher voucher = voucherRepo.findByCode(code)
-                    .orElseThrow(() -> new RuntimeException("Mã giảm giá không tồn tại"));
-
-            if (!voucher.getActive() || (voucher.getExpiryDate() != null && voucher.getExpiryDate().isBefore(LocalDateTime.now()))) {
-                throw new RuntimeException("Mã giảm giá đã hết hạn hoặc bị vô hiệu hóa");
-            }
-            if (voucher.getUsedCount() >= voucher.getMaxUsage()) {
-                throw new RuntimeException("Mã giảm giá đã hết lượt sử dụng");
-            }
-            if (total.compareTo(voucher.getMinOrderAmount()) < 0) {
-                throw new RuntimeException("Đơn hàng chưa đạt giá trị tối thiểu: " + voucher.getMinOrderAmount());
+        // 3. Duyệt giỏ hàng để tạo Chi tiết hóa đơn
+        for (CartItem item : cartItems) {
+            Product p = item.getProduct();
+            
+            // Check tồn kho
+            if (p.getStock() < item.getQuantity()) {
+                throw new RuntimeException("Sản phẩm " + p.getName() + " không đủ hàng!");
             }
 
-            BigDecimal discount = BigDecimal.ZERO;
-            if ("PERCENTAGE".equals(voucher.getType())) {
-                discount = total.multiply(voucher.getDiscountValue()).divide(new BigDecimal(100));
-            } else {
-                discount = voucher.getDiscountValue();
-            }
+            // Trừ tồn kho tạm thời
+            int newStock = p.getStock() - item.getQuantity();
+            p.setStock(newStock);
+            productRepo.save(p);
+            // Tạo detail
+            SalesDetail detail = new SalesDetail();
+            detail.setOrder(order);
+            detail.setProduct(p);
+            detail.setQuantity(item.getQuantity());
+            detail.setPrice(p.getPrice()); 
 
-            total = total.subtract(discount); 
-            if (total.compareTo(BigDecimal.ZERO) < 0) total = BigDecimal.ZERO;
-
-            order.setVoucher(voucher); 
-            voucher.setUsedCount(voucher.getUsedCount() + 1);
-            voucherRepo.save(voucher);
-        } else {
-            order.setVoucher(null); 
+            BigDecimal subTotal = p.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            grandTotal = grandTotal.add(subTotal);
+            details.add(detail);
         }
 
-        order.setTotalAmount(total);
+        order.setDetails(details);
+        order.setTotalAmount(grandTotal); 
+
+        // 4. Xóa giỏ hàng sau khi đã lên đơn
+        cartRepo.deleteByUserId(userId);
 
         return orderRepo.save(order);
     }
 
     @Transactional
-    public void cancelOrder(Integer orderId){
+    public void requestReturn(Integer orderId, Integer productId, Integer qty, String reason) {
+        String currentEmail = getCurrentUserEmail();
+        
         SalesOrder order = orderRepo.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
-
-        if(order.getStatus().equals("CANCELLED"))
-            throw new RuntimeException("Đơn hàng đã được hủy trước đó");
-
-        for(SalesDetail d : order.getDetails()){
-            Product p = d.getProduct();
-            p.setStock(p.getStock() + d.getQuantity());
-            productRepo.save(p);
+                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại"));
+        if (!order.getUser().getEmail().equals(currentEmail)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền yêu cầu trả hàng cho hóa đơn của người khác!");
+        }
+                if (!"PAID".equals(order.getStatus()) && !"DELIVERED".equals(order.getStatus())) {
+            throw new RuntimeException("Chỉ được trả hàng khi đơn đã thanh toán hoặc đã giao");
         }
 
-        order.setStatus("CANCELLED");
+        Product product = productRepo.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
+
+        if (qty == null || qty <= 0) {
+            throw new RuntimeException("Số lượng trả hàng phải lớn hơn 0");
+        }
+
+        SalesReturn salesReturn = new SalesReturn();
+        salesReturn.setOrder(order);
+        salesReturn.setProduct(product);
+        salesReturn.setQuantity(qty);
+        salesReturn.setReason(reason);
+        salesReturn.setStatus("REQUESTED");
+        salesReturn.setCreatedAt(LocalDateTime.now());
+
+        returnRepo.save(salesReturn);
+
+        order.setStatus("PENDING_RETURN");
         orderRepo.save(order);
     }
-@Transactional
-public void confirmPaid(Integer orderId) {
-    SalesOrder order = orderRepo.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
-    
-    if ("PENDING".equals(order.getStatus())) {
-        order.setStatus("PAID");
+
+    @Transactional
+    public void confirmReturn(Integer returnId, Integer employeeId) {
+        SalesReturn salesReturn = returnRepo.findById(returnId)
+                .orElseThrow(() -> new RuntimeException("Yêu cầu trả hàng không tồn tại"));
+
+        if (!"REQUESTED".equals(salesReturn.getStatus())) {
+            throw new RuntimeException("Yêu cầu trả hàng không ở trạng thái chờ xử lý");
+        }
+
+        User employee = userRepo.findById(employeeId)
+                .orElseThrow(() -> new RuntimeException("Nhân viên không tồn tại"));
+
+        Product product = salesReturn.getProduct();
+        product.setStock(product.getStock() + salesReturn.getQuantity());
+        productRepo.save(product);
+
+        salesReturn.setStatus("COMPLETED");
+        salesReturn.setProcessedBy(employee);
+        returnRepo.save(salesReturn);
+
+        SalesOrder order = salesReturn.getOrder();
+        order.setStatus("RETURNED");
         orderRepo.save(order);
     }
-}
-@Autowired private SalesReturnRepository returnRepo;
-@Transactional
-public void processReturn(Integer orderId, Integer productId, Integer qty, String reason) {
-    SalesOrder order = orderRepo.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
 
-    Product product = productRepo.findById(productId)
-            .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
+    @Transactional
+    public void confirmPayment(Integer orderId) {
+        // Logic: Nhân viên/Admin xác nhận hóa đơn
+        SalesOrder order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không thấy đơn hàng"));
+        
+        if (!order.getStatus().equals("PENDING")) {
+            throw new RuntimeException("Đơn hàng không ở trạng thái chờ xác nhận");
+        }
 
-    String currentUsername = org.springframework.security.core.context.SecurityContextHolder
-            .getContext().getAuthentication().getName();
-    User admin = userRepo.findByEmail(currentUsername).get();
-
-    product.setStock(product.getStock() + qty);
-    productRepo.save(product);
-
-    SalesReturn salesReturn = new SalesReturn();
-    salesReturn.setOrder(order);
-    salesReturn.setProduct(product);
-    salesReturn.setQuantity(qty);
-    salesReturn.setReason(reason);
-    salesReturn.setReturnDate(LocalDateTime.now());
-    salesReturn.setProcessedBy(admin);
-    returnRepo.save(salesReturn);
-
-    order.setStatus("RETURNED");
-    orderRepo.save(order);
-}
-
+        order.setStatus("PAID"); 
+        orderRepo.save(order);
+    }
 }

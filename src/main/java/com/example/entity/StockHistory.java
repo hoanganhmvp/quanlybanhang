@@ -1,8 +1,15 @@
 package com.example.entity;
 
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "stock_history")
@@ -16,15 +23,17 @@ public class StockHistory {
     private Product product;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id") // Người thực hiện nhập kho
     private User user;
 
-    private Integer quantity; 
-    private BigDecimal costPrice; 
-    private BigDecimal totalAmount; 
-    private LocalDateTime importDate; 
+    private Integer quantity;      // Số lượng nhập thêm
+    private BigDecimal costPrice;  // Giá vốn tại thời điểm nhập
+    private BigDecimal totalAmount; // Tổng tiền nhập (Qty * CostPrice)
+    private LocalDateTime importDate;
 
-    // --- Getter và Setter ---
+    public StockHistory() {}
+
+    // GETTERS & SETTERS (Thủ công)
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
     public Product getProduct() { return product; }
