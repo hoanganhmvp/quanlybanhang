@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +41,97 @@ public class OrderService {
         return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
+    @Transactional
+    public SalesOrder buyNow(Integer productId, Integer quantity, String voucherCode) {
+        // 1. Xác định User
+        String email = getCurrentUserEmail();
+        User currentUser = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+        // --- LOGIC CHỐNG TRÙNG LẶP (ANTI-SPAM) ---
+        Optional<SalesOrder> lastOrderOpt = orderRepo.findFirstByUserIdOrderByOrderDateDesc(currentUser.getId());
+        if (lastOrderOpt.isPresent()) {
+            SalesOrder lastOrder = lastOrderOpt.get();
+            LocalDateTime now = LocalDateTime.now();
+            if (lastOrder.getOrderDate().plusSeconds(30).isAfter(now)) {
+                for (SalesDetail detail : lastOrder.getDetails()) {
+                    if (detail.getProduct().getId().equals(productId) && detail.getQuantity().equals(quantity)) {
+                        throw new RuntimeException("Hệ thống đang xử lý đơn hàng tương tự của bạn. Vui lòng chờ 30 giây!");
+                    }
+                }
+            }
+        }
+        // ----------------------------------------
+
+        // 2. Lấy sản phẩm và kiểm tra tồn kho
+        Product p = productRepo.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
+
+        if (quantity == null || quantity <= 0) {
+            throw new RuntimeException("Số lượng phải lớn hơn 0");
+        }
+
+        if (p.getStock() < quantity) {
+            throw new RuntimeException("Sản phẩm " + p.getName() + " không đủ hàng!");
+        }
+
+        // 3. Tạo đơn và chi tiết
+        SalesOrder order = new SalesOrder();
+        order.setUser(currentUser);
+        order.setOrderCode("INV-" + System.currentTimeMillis());
+        order.setStatus("PENDING");
+        order.setOrderDate(LocalDateTime.now());
+
+        SalesDetail detail = new SalesDetail();
+        detail.setOrder(order);
+        detail.setProduct(p);
+        detail.setQuantity(quantity);
+        detail.setPrice(p.getPrice());
+
+        BigDecimal total = p.getPrice().multiply(BigDecimal.valueOf(quantity));
+        order.setDetails(List.of(detail));
+        order.setTotalAmount(total);
+
+        // Trừ kho
+        p.setStock(p.getStock() - quantity);
+        productRepo.save(p);
+
+        // 4. Xử lý voucher nếu có (tương tự checkout)
+        BigDecimal discount = BigDecimal.ZERO;
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            Voucher v = voucherRepo.findByCode(voucherCode.toUpperCase())
+                    .orElseThrow(() -> new RuntimeException("Mã giảm giá không tồn tại"));
+            if (!Boolean.TRUE.equals(v.getActive())) {
+                throw new RuntimeException("Mã giảm giá đã bị vô hiệu hóa");
+            }
+            if (v.getExpiryDate() != null && v.getExpiryDate().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Mã giảm giá đã hết hạn");
+            }
+            if (v.getUsedCount() >= v.getMaxUsage()) {
+                throw new RuntimeException("Mã giảm giá đã hết lượt sử dụng");
+            }
+            if (total.compareTo(v.getMinOrderAmount()) < 0) {
+                throw new RuntimeException("Đơn hàng không đạt giá trị tối thiểu " + v.getMinOrderAmount() + " để dùng mã này");
+            }
+            if ("PERCENTAGE".equalsIgnoreCase(v.getType())) {
+                discount = total.multiply(v.getDiscountValue()).divide(new BigDecimal(100));
+            } else {
+                discount = v.getDiscountValue();
+            }
+            v.setUsedCount(v.getUsedCount() + 1);
+            voucherRepo.save(v);
+            order.setVoucher(v);
+            order.setDiscountAmount(discount);
+        }
+
+        BigDecimal grandTotal = total.subtract(discount);
+        if (grandTotal.compareTo(BigDecimal.ZERO) < 0) {
+            grandTotal = BigDecimal.ZERO;
+        }
+        order.setTotalAmount(grandTotal);
+
+        return orderRepo.save(order);
+    }
     @Transactional
     public SalesOrder checkout() {
         // Get current user from authentication context
@@ -211,7 +303,6 @@ public SalesOrder checkout(String voucherCode) {
         details.add(detail);
     }
 
-    // 3. XỬ LÝ VOUCHER (Nếu có)
     BigDecimal discount = BigDecimal.ZERO;
     if (voucherCode != null && !voucherCode.isBlank()) {
         Voucher v = voucherRepo.findByCode(voucherCode.toUpperCase())
@@ -220,6 +311,7 @@ public SalesOrder checkout(String voucherCode) {
         // KIỂM TRA ĐIỀU KIỆN VOUCHER
         if (!v.getActive()) throw new RuntimeException("Mã giảm giá đã bị vô hiệu hóa");
         if (v.getExpiryDate() != null && v.getExpiryDate().isBefore(LocalDateTime.now())) {
+            
             throw new RuntimeException("Mã giảm giá đã hết hạn");
         }
         if (v.getUsedCount() >= v.getMaxUsage()) {
@@ -267,4 +359,25 @@ public List<SalesOrder> getMyOrderHistory() {
     // 3. Truy vấn danh sách đơn hàng của User này, sắp xếp mới nhất lên đầu
     return orderRepo.findByUserOrderByIdDesc(user);
 }
+
+    @Transactional
+    public void cancelOrder(Integer orderId) {
+        SalesOrder order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại"));
+
+        // Chỉ được hủy khi đang ở trạng thái PENDING
+        if (!"PENDING".equals(order.getStatus())) {
+            throw new RuntimeException("Chỉ đơn hàng đang chờ mới có thể hủy");
+        }
+
+        // HOÀN LẠI KHO BÁN
+        for (SalesDetail detail : order.getDetails()) {
+            Product p = detail.getProduct();
+            p.setStock(p.getStock() + detail.getQuantity());
+            productRepo.save(p);
+        }
+
+        order.setStatus("CANCELLED");
+        orderRepo.save(order);
+    }
 }

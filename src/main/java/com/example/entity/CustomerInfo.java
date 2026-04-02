@@ -8,8 +8,7 @@ import jakarta.persistence.Table;
 @Table(name = "customer_info")
 public class CustomerInfo {
     @Id
-    private Integer id; // Sử dụng chung ID với bảng User để dễ quản lý
-
+    private Integer id; 
     private String name;
     private String email;
     private String phone;

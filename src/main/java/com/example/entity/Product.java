@@ -22,7 +22,11 @@ public class Product {
     private BigDecimal price;      // Giá bán lẻ
     private BigDecimal costPrice;  
     private Integer stock = 0;     
-
+    private String description;    // Mô tả chi tiết
+    private String imageUrl;       // Đường dẫn ảnh sản phẩm
+    private String color;          // Màu sắc
+    private String size;  
+    private Boolean deleted = false;    
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
@@ -50,4 +54,19 @@ public class Product {
 
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
+    
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
+
+    public String getSize() { return size; }
+    public void setSize(String size) { this.size = size; }
+    
+    public Boolean getDeleted() { return deleted; }
+    public void setDeleted(Boolean deleted) { this.deleted = deleted; }
 }

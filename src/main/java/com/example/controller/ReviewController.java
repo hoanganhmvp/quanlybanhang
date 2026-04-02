@@ -1,6 +1,5 @@
 package com.example.controller;
 
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.dto.ProductReviewResponse;
 import com.example.entity.Review;
 import com.example.service.ReviewService;
 
@@ -38,7 +38,8 @@ public class ReviewController {
 
     // Ai cũng có thể xem đánh giá của sản phẩm
     @GetMapping("/product/{productId}")
-    public List<Review> getProductReviews(@PathVariable Integer productId) {
-        return reviewService.getReviewsByProduct(productId);
+    public ResponseEntity<ProductReviewResponse> getProductReviews(@PathVariable Integer productId) {
+        ProductReviewResponse response = reviewService.getProductReviewDetails(productId);
+        return ResponseEntity.ok(response);
     }
 }

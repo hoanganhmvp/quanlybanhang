@@ -9,7 +9,11 @@ import com.example.entity.Review;
 
 public interface ReviewRepository extends JpaRepository<Review, Integer> {
     List<Review> findByProductIdOrderByCreatedAtDesc(Integer productId);
+    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.product.id = :productId")
+    Double getAverageRatingByProductId(Integer productId);
 
+    // Đếm tổng số lượt đánh giá
+    Long countByProductId(Integer productId);
     // Kiểm tra xem User đã mua sản phẩm này và đơn hàng đã thanh toán chưa
     @Query("SELECT COUNT(sd) > 0 FROM SalesDetail sd " +
            "JOIN sd.order o " +

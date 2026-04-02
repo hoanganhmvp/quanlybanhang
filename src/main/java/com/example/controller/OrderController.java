@@ -62,4 +62,18 @@ public ResponseEntity<?> checkout(@RequestParam(required = false) String voucher
 public ResponseEntity<List<SalesOrder>> getMyHistory() {
     return ResponseEntity.ok(orderService.getMyOrderHistory());
 }
+@PutMapping("/{id}/cancel")
+public ResponseEntity<?> cancelOrder(@PathVariable Integer id) {
+    orderService.cancelOrder(id);
+    return ResponseEntity.ok("Đơn hàng đã được hủy và sản phẩm đã quay lại kho bán.");
+}
+// Thêm vào trong class OrderController.java
+@PostMapping("/buy-now")
+public ResponseEntity<SalesOrder> buyNow(
+        @RequestParam Integer productId, 
+        @RequestParam Integer quantity, 
+        @RequestParam(required = false) String voucherCode) {
+    SalesOrder order = orderService.buyNow(productId, quantity, voucherCode);
+    return ResponseEntity.ok(order);
+}
 }

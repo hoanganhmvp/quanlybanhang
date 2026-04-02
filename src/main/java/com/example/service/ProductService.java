@@ -39,14 +39,22 @@ public class ProductService {
         oldProduct.setCostPrice(newProduct.getCostPrice());
         oldProduct.setProductCode(newProduct.getProductCode());
         oldProduct.setCategory(newProduct.getCategory());
-        
+        oldProduct.setDescription(newProduct.getDescription());
+        oldProduct.setImageUrl(newProduct.getImageUrl());
+        oldProduct.setColor(newProduct.getColor());
+        oldProduct.setSize(newProduct.getSize());
         return productRepo.save(oldProduct);
     }
 
-    public void delete(Integer id) {
-        productRepo.deleteById(id);
-    }
-
+    @Transactional
+public void delete(Integer id) {
+    Product p = productRepo.findById(id)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm id: " + id));
+    
+    // Logic Xóa mềm
+    p.setDeleted(true); 
+    productRepo.save(p);
+}
     @Transactional
     public void importStock(Integer productId, Integer qty, BigDecimal newCostPrice, String userEmail) {
         // 1. Tìm sản phẩm

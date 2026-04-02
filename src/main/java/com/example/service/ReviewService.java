@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.example.dto.ProductReviewResponse;
 import com.example.entity.Product;
 import com.example.entity.Review;
 import com.example.entity.User;
@@ -21,6 +22,19 @@ public class ReviewService {
     @Autowired private UserRepository userRepo;
     @Autowired private ProductRepository productRepo;
 
+    public ProductReviewResponse getProductReviewDetails(Integer productId) {
+        // 1. Tính điểm trung bình
+        Double avg = reviewRepo.getAverageRatingByProductId(productId);
+        
+        // 2. Lấy tổng số lượt đánh giá
+        Long total = reviewRepo.countByProductId(productId);
+        
+        // 3. Lấy danh sách các bình luận
+        List<Review> reviews = reviewRepo.findByProductIdOrderByCreatedAtDesc(productId);
+        
+        // Trả về đối tượng tổng hợp
+        return new ProductReviewResponse(avg, total, reviews);
+    }
     public Review postReview(Integer productId, Integer rating, String comment) {
         // 1. Lấy thông tin người dùng từ Token
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -38,7 +52,8 @@ public class ReviewService {
         }
 
         // 4. Lưu đánh giá
-        Product product = productRepo.findById(productId).get();
+        Product product = productRepo.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
         Review review = new Review();
         review.setUser(user);
         review.setProduct(product);

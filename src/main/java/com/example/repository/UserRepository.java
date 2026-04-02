@@ -9,7 +9,6 @@ import com.example.entity.User;
 public interface UserRepository extends JpaRepository<User, Integer> {
     Optional<User> findByEmail(String email);
     
-    // Các hàm check trùng lặp
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
 }
