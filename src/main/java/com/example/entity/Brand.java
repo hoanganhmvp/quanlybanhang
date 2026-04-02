@@ -15,7 +15,6 @@ public class Brand {
 
     private String name;
 
-    // Constructor mặc định (Bắt buộc phải có trong Entity)
     public Brand() {}
 
     // GETTER cho id

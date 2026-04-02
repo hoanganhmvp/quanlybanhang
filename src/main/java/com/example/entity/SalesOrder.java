@@ -33,10 +33,12 @@ public class SalesOrder {
     @ManyToOne
     @JoinColumn(name = "voucher_id")
     private Voucher voucher;
-
+    private BigDecimal discountAmount = BigDecimal.ZERO;
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<SalesDetail> details;
 
+   
+   
     // Getters & Setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
@@ -61,4 +63,7 @@ public class SalesOrder {
 
     public List<SalesDetail> getDetails() { return details; }
     public void setDetails(List<SalesDetail> details) { this.details = details; }
+
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
 }

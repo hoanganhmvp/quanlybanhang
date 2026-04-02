@@ -18,7 +18,6 @@ import com.example.repository.CategoryRepository;
 @CrossOrigin("*") 
 public class AppController {
 
-    // CHỈ GIỮ LẠI cái này vì bên dưới có dùng để lấy danh mục
     @Autowired private CategoryRepository categoryRepo;
 
     @GetMapping("/categories")

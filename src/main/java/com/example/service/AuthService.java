@@ -1,6 +1,9 @@
 package com.example.service;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.dto.UserResponse;
 import com.example.entity.CustomerInfo;
 import com.example.entity.Role;
 import com.example.entity.User;
@@ -82,7 +86,7 @@ public class AuthService {
         return "Đăng ký thành công vai trò: " + roleName;
     }
 
-    public String login(String email, String password) {
+    public Map<String, Object> login(String email, String password) {
         if (email == null || email.isBlank()) {
             throw new RuntimeException("Lỗi: Vui lòng nhập email!");
         }
@@ -101,7 +105,19 @@ public class AuthService {
                 .map(Role::getName)
                 .collect(Collectors.toList());
 
+        // Tạo UserResponse để trả về thông tin user
+        UserResponse userInfo = new UserResponse(
+                user.getId(), user.getName(), user.getEmail(),
+                user.getPhone(), user.getAddress(), new HashSet<>(roles)
+        );
+
         // Token này sẽ mang theo thông tin phân quyền
-        return jwtUtil.generateToken(user.getEmail(), roles);
+        String token = jwtUtil.generateToken(user.getEmail(), roles);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("accessToken", token);
+        response.put("user", userInfo); // Hiện thông tin ngay khi đăng nhập
+
+        return response;
     }
 }

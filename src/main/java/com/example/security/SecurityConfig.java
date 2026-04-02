@@ -49,6 +49,10 @@ public class SecurityConfig {
     .requestMatchers(HttpMethod.GET, "/api/users").hasAuthority("ROLE_ADMIN")
     .requestMatchers(HttpMethod.POST, "/api/orders/checkout").hasAuthority("ROLE_USER")
     .requestMatchers("/api/cart/**").hasAuthority("ROLE_USER")  
+    .requestMatchers("/api/me").authenticated()
+    .requestMatchers("/api/orders/my-history").hasAuthority("ROLE_USER")
+    .requestMatchers(HttpMethod.POST, "/api/reviews/**").hasAuthority("ROLE_USER")
+    .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll() // Cho phép khách xem review
     // Nhân viên & Admin được sửa, xóa sản phẩm và xác nhận hóa đơn
     .requestMatchers(HttpMethod.PUT, "/api/order/*/paid").hasAnyAuthority("ROLE_ADMIN", "ROLE_EMPLOYEE")
     // Xem lịch sử nhập hàng (Stock History)

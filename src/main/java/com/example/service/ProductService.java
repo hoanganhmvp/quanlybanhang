@@ -39,7 +39,6 @@ public class ProductService {
         oldProduct.setCostPrice(newProduct.getCostPrice());
         oldProduct.setProductCode(newProduct.getProductCode());
         oldProduct.setCategory(newProduct.getCategory());
-        // Không cập nhật stock trực tiếp ở đây (sẽ làm ở phần Nhập kho sau)
         
         return productRepo.save(oldProduct);
     }
@@ -60,7 +59,7 @@ public class ProductService {
 
         // 3. Cập nhật bảng Product
         p.setStock(p.getStock() + qty);
-        p.setCostPrice(newCostPrice); // Cập nhật giá vốn mới nhất
+        p.setCostPrice(newCostPrice);
         productRepo.save(p);
 
         // 4. Lưu lịch sử nhập kho

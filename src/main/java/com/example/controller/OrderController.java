@@ -1,9 +1,11 @@
 package com.example.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.entity.SalesOrder;
 import com.example.service.OrderService;
 
 @RestController
@@ -21,13 +24,12 @@ public class OrderController {
 
     // Khách hàng bấm thanh toán giỏ hàng
     @PostMapping("/checkout")
-    public ResponseEntity<?> checkout() {
-        // Logic tự lấy user từ Token bên trong Service
-        return ResponseEntity.ok(orderService.checkout());
-    }
+public ResponseEntity<?> checkout(@RequestParam(required = false) String voucherCode) {
+    return ResponseEntity.ok(orderService.checkout(voucherCode));
+}
 
     // Nhân viên/Admin xác nhận thanh toán
-    @PutMapping("/{id}/paid") // <--- Ở đây bạn dùng PUT
+    @PutMapping("/{id}/paid") 
     public String markAsPaid(@PathVariable Integer id) {
         orderService.confirmPayment(id);
         return "Đơn hàng " + id + " đã được chuyển sang trạng thái PAID";
@@ -56,4 +58,8 @@ public class OrderController {
         }
     }
 
+    @GetMapping("/my-history")
+public ResponseEntity<List<SalesOrder>> getMyHistory() {
+    return ResponseEntity.ok(orderService.getMyOrderHistory());
+}
 }
